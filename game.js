@@ -151,13 +151,24 @@ window.addEventListener('resize', () => { if (game) resizeCanvas(); });
 
 canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
+  doJump();
+});
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'ArrowUp' || e.code === 'Space') {
+    e.preventDefault();
+    doJump();
+  }
+});
+
+function doJump() {
   if (!game || game.over) return;
   if (game.onGround) {
     game.velY = JUMP_VEL;
     game.onGround = false;
   }
   document.getElementById('tap-hint').style.display = 'none';
-});
+}
 
 function initGame() {
   if (game && game.rafId) cancelAnimationFrame(game.rafId);
@@ -453,7 +464,9 @@ function drawPoleElasto(x, y, w, h, c) {
 // ── Horse rendering (Elastomania vector style) ─────────────────────────────
 function drawHorseElasto(x, y, w, h, phase, onGround) {
   ctx.save();
-  ctx.translate(x, y);
+  // Flip horizontally so horse faces right (direction of travel)
+  ctx.translate(x + w, y);
+  ctx.scale(-1, 1);
 
   const coat = config.horseCoat;
   const gear = config.gearColor;
