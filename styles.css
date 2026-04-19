@@ -36,11 +36,83 @@ html, body {
   flex-direction: column;
 }
 
+/* ── Player select screen ── */
+#player-screen {
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(160deg, #010610 0%, #030D03 100%);
+  gap: 24px;
+  padding: 24px;
+}
+
+.player-subtitle {
+  color: var(--muted);
+  font-size: 0.85rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-top: -12px;
+}
+
+.player-buttons {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.player-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 32px;
+  background: rgba(57,255,20,0.06);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+  min-width: 140px;
+}
+.player-btn:hover, .player-btn:active {
+  border-color: var(--neon);
+  background: rgba(57,255,20,0.14);
+  box-shadow: 0 0 24px rgba(57,255,20,0.25);
+  transform: scale(1.03);
+}
+
+.player-icon { font-size: 2.2rem; }
+
+.player-name {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: var(--neon);
+  letter-spacing: 0.14em;
+  text-shadow: 0 0 10px var(--neon);
+}
+
+.player-best {
+  font-size: 0.72rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
 /* ── Setup screen ── */
 #setup-screen {
   overflow-y: auto;
   padding: 20px 16px 40px;
   background: linear-gradient(160deg, #010610 0%, #030D03 100%);
+}
+
+.setup-player-label {
+  text-align: center;
+  color: var(--neon);
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-top: -14px;
+  margin-bottom: 4px;
+  text-shadow: 0 0 8px var(--neon);
 }
 
 .game-title {
@@ -235,12 +307,21 @@ html, body {
   color: var(--muted);
 }
 
-#hud-distance, #hud-jumps, #hud-time {
-  font-size: 1.35rem;
+#hud-distance, #hud-jumps, #hud-time, #hud-best {
+  font-size: 1.2rem;
   font-weight: 700;
   color: var(--neon);
   text-shadow: 0 0 8px var(--neon);
   line-height: 1.1;
+}
+
+.hud-player {
+  font-size: 1rem;
+  font-weight: 800;
+  color: var(--cyan);
+  text-shadow: 0 0 8px var(--cyan);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .hud-legs {
@@ -264,22 +345,55 @@ html, body {
   touch-action: none;
 }
 
-#tap-hint {
+/* ── Mobile controls overlay ── */
+#mobile-controls {
   position: absolute;
-  bottom: 30px;
-  left: 50%;
-  transform: translateX(-50%);
+  bottom: 0;
+  left: 0; right: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 0 12px 12px;
+  pointer-events: none;
+}
+
+.ctrl-btn {
+  pointer-events: all;
+  width: 72px;
+  height: 72px;
+  background: rgba(0,0,0,0.65);
+  border: 2px solid var(--border);
+  border-radius: 4px;
+  color: var(--neon);
+  font-size: 1.6rem;
+  font-family: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  transition: background 0.1s, box-shadow 0.1s;
+}
+.ctrl-btn:active {
+  background: rgba(57,255,20,0.18);
+  box-shadow: 0 0 16px rgba(57,255,20,0.4);
+}
+
+#tap-hint {
+  pointer-events: none;
   background: rgba(0,0,0,0.75);
   color: var(--neon);
   border: 1px solid var(--border);
-  padding: 8px 22px;
+  padding: 8px 18px;
   border-radius: 2px;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-family: inherit;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  pointer-events: none;
+  text-align: center;
   animation: pulse 1.4s ease-in-out infinite;
+  margin-bottom: 8px;
 }
 
 @keyframes pulse {
@@ -314,6 +428,15 @@ html, body {
   text-transform: uppercase;
   letter-spacing: 0.1em;
   text-shadow: 0 0 10px var(--neon);
+}
+
+.new-record-msg {
+  font-size: 1rem;
+  color: #FFD700;
+  text-shadow: 0 0 12px #FFD700;
+  letter-spacing: 0.1em;
+  margin: -16px 0 16px;
+  text-align: center;
 }
 
 .stats-grid {

@@ -2,6 +2,7 @@
 
 // ── Config ──────────────────────────────────────────────────────────────────
 const config = {
+  player: '',
   breed: 'arabian',
   horseCoat: '#FFD700',
   marking: 'none',
@@ -11,6 +12,37 @@ const config = {
   hairColor: '#FF6347',
   outfitColor: '#00BFFF',
 };
+
+// ── Player records ─────────────────────────────────────────────────────────
+function getBest(player) {
+  return parseInt(localStorage.getItem(`konkor_best_${player}`) || '0', 10);
+}
+function saveBest(player, meters) {
+  if (meters > getBest(player)) {
+    localStorage.setItem(`konkor_best_${player}`, meters);
+    return true;
+  }
+  return false;
+}
+function fmtBest(player) {
+  const b = getBest(player);
+  return b > 0 ? `Рекорд: ${b}м` : 'Рекорд: —';
+}
+
+// ── Player selection screen ────────────────────────────────────────────────
+function refreshPlayerBests() {
+  document.getElementById('best-vera').textContent = fmtBest('vera');
+  document.getElementById('best-andrei').textContent = fmtBest('andrei');
+}
+
+document.querySelectorAll('.player-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    config.player = btn.dataset.player;
+    document.getElementById('setup-player-label').textContent =
+      `Игрок: ${config.player.toUpperCase()}`;
+    showScreen('setup-screen');
+  });
+});
 
 // ── Setup wiring ───────────────────────────────────────────────────────────
 function wireOptionGroup(containerId, configKey) {
@@ -45,6 +77,8 @@ wireColorGroup('outfit-colors', 'outfitColor');
 document.getElementById('start-btn').addEventListener('click', startGame);
 document.getElementById('restart-btn').addEventListener('click', startGame);
 document.getElementById('menu-btn').addEventListener('click', showSetup);
+document.getElementById('change-player-btn').addEventListener('click', showPlayerScreen);
+document.getElementById('change-player-btn2').addEventListener('click', showPlayerScreen);
 
 // ── Screens ────────────────────────────────────────────────────────────────
 function showScreen(id) {
@@ -52,6 +86,10 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 function showSetup() { showScreen('setup-screen'); }
+function showPlayerScreen() {
+  refreshPlayerBests();
+  showScreen('player-screen');
+}
 
 // ── Audio ──────────────────────────────────────────────────────────────────
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -141,6 +179,9 @@ function startGame() {
   showScreen('game-screen');
   resizeCanvas();
   initGame();
+  const name = config.player ? config.player.toUpperCase() : '—';
+  document.getElementById('hud-player').textContent = name;
+  document.getElementById('hud-best').textContent = getBest(config.player) + 'м';
   document.getElementById('tap-hint').style.display = 'block';
 }
 
@@ -156,20 +197,24 @@ canvas.addEventListener('pointerdown', e => {
   doJump();
 });
 
+// Keyboard controls
 window.addEventListener('keydown', e => {
-  if (e.code === 'ArrowUp' || e.code === 'Space') {
-    e.preventDefault();
-    doJump();
-  }
-  if (e.code === 'ArrowRight') {
-    e.preventDefault();
-    if (game && !game.over) game.speed = Math.min(SPEED_MAX, game.speed + 1.5);
-  }
-  if (e.code === 'ArrowLeft') {
-    e.preventDefault();
-    if (game && !game.over) game.speed = Math.max(SPEED_MIN, game.speed - 1.5);
-  }
+  if (e.code === 'ArrowUp' || e.code === 'Space') { e.preventDefault(); doJump(); }
+  if (e.code === 'ArrowRight') { e.preventDefault(); if (game && !game.over) game.speed = Math.min(SPEED_MAX, game.speed + 1.5); }
+  if (e.code === 'ArrowLeft')  { e.preventDefault(); if (game && !game.over) game.speed = Math.max(SPEED_MIN, game.speed - 1.5); }
 });
+
+// Mobile on-screen speed buttons (hold to accelerate/decelerate)
+let _holdFast = false, _holdSlow = false;
+
+function wireHoldBtn(id, onHold) {
+  const btn = document.getElementById(id);
+  btn.addEventListener('pointerdown', e => { e.preventDefault(); onHold(true); });
+  btn.addEventListener('pointerup',   e => { e.preventDefault(); onHold(false); });
+  btn.addEventListener('pointerleave',e => { onHold(false); });
+}
+wireHoldBtn('btn-fast', v => { _holdFast = v; });
+wireHoldBtn('btn-slow', v => { _holdSlow = v; });
 
 function doJump() {
   if (!game || game.over) return;
@@ -236,7 +281,8 @@ function loop() {
 function update() {
   const g = game;
   g.frameCount++;
-  // Speed is controlled manually via ArrowLeft/Right; clamp only
+  if (_holdFast) g.speed = Math.min(SPEED_MAX, g.speed + 0.12);
+  if (_holdSlow) g.speed = Math.max(SPEED_MIN, g.speed - 0.12);
   g.distPixels += g.speed;
   g.distance = g.distPixels / 60;
 
@@ -300,7 +346,8 @@ function update() {
 
   g.obstacles = g.obstacles.filter(ob => ob.worldX > g.distPixels - canvas.width * 0.5);
 
-  document.getElementById('hud-distance').textContent = Math.floor(g.distance) + 'm';
+  document.getElementById('hud-distance').textContent = Math.floor(g.distance) + 'м';
+  document.getElementById('hud-best').textContent = getBest(config.player) + 'м';
   const secs = Math.floor((performance.now() - g.startTime) / 1000);
   document.getElementById('hud-time').textContent =
     `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
@@ -315,11 +362,17 @@ function updateLivesHUD(g) {
 
 function endGame() {
   game.over = true;
-  const secs = Math.floor((performance.now() - game.startTime) / 1000);
-  document.getElementById('final-distance').textContent = Math.floor(game.distance) + 'm';
+  const meters = Math.floor(game.distance);
+  const isNew = saveBest(config.player, meters);
+  const name = config.player ? config.player.toUpperCase() : '';
+
+  document.getElementById('gameover-title').textContent =
+    name ? `Игра окончена, ${name}!` : 'Игра окончена!';
+  document.getElementById('final-distance').textContent = meters + 'м';
   document.getElementById('final-jumps').textContent = game.jumps;
-  document.getElementById('final-time').textContent =
-    `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+  document.getElementById('final-best').textContent = getBest(config.player) + 'м';
+  const msg = document.getElementById('new-record-msg');
+  msg.style.display = isNew ? 'block' : 'none';
   showScreen('gameover-screen');
 }
 
