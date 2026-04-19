@@ -3,6 +3,7 @@
 // ── Config ──────────────────────────────────────────────────────────────────
 const config = {
   player: '',
+  theme: 'elasto',
   breed: 'arabian',
   horseCoat: '#FFD700',
   marking: 'none',
@@ -88,8 +89,26 @@ function showScreen(id) {
 function showSetup() { showScreen('setup-screen'); }
 function showPlayerScreen() {
   refreshPlayerBests();
+  updateThemeBtn();
   showScreen('player-screen');
 }
+
+function updateThemeBtn() {
+  const btn = document.getElementById('theme-btn');
+  if (!btn) return;
+  if (config.theme === 'elasto') {
+    btn.textContent = '⚡ Неон';
+    btn.dataset.current = 'elasto';
+  } else {
+    btn.textContent = '🌿 Природа';
+    btn.dataset.current = 'classic';
+  }
+}
+
+document.getElementById('theme-btn').addEventListener('click', () => {
+  config.theme = config.theme === 'elasto' ? 'classic' : 'elasto';
+  updateThemeBtn();
+});
 
 // ── Audio ──────────────────────────────────────────────────────────────────
 const AudioCtx = window.AudioContext || window.webkitAudioContext;
@@ -373,13 +392,16 @@ function endGame() {
   showScreen('gameover-screen');
 }
 
-// ── Render ─────────────────────────────────────────────────────────────────
+// ── Render dispatcher ──────────────────────────────────────────────────────
 function render() {
-  const g = game;
-  const W = canvas.width;
-  const H = canvas.height;
+  if (config.theme === 'classic') renderClassic(game);
+  else renderElasto(game);
+}
 
-  // Dark sky
+// ── Elasto render ──────────────────────────────────────────────────────────
+function renderElasto(g) {
+  const W = canvas.width, H = canvas.height;
+
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, '#010308');
   sky.addColorStop(0.55, '#0D1F3C');
@@ -387,7 +409,6 @@ function render() {
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
-  // Stars
   g.stars.forEach(s => {
     ctx.fillStyle = `rgba(255,255,255,${s.alpha})`;
     ctx.fillRect(s.x, s.y, s.size, s.size);
@@ -398,15 +419,431 @@ function render() {
 
   g.obstacles.forEach(ob => {
     const sx = ob.worldX - g.distPixels + g.horseScreenX;
-    if (sx > -200 && sx < W + 200) {
-      drawObstacleElasto(ob, sx, groundYAt(ob.worldX));
-    }
+    if (sx > -200 && sx < W + 200) drawObstacleElasto(ob, sx, groundYAt(ob.worldX));
   });
 
-  // Blink horse during invincibility (every 6 frames)
-  if (g.invincible === 0 || Math.floor(g.invincible / 6) % 2 === 0) {
+  if (g.invincible === 0 || Math.floor(g.invincible / 6) % 2 === 0)
     drawHorseElasto(g.horseScreenX, g.horseY, g.horseW, g.horseH, g.gallopPhase, g.onGround);
+}
+
+// ── Classic theme ──────────────────────────────────────────────────────────
+const BIOME_LEN = 500;
+const BIOMES = [
+  { name: 'meadow',   skyT: '#5BAADB', skyB: '#D4EDFA', h1: '#A8D870', h2: '#7EB84A', gFill: '#5DA832', gLine: '#3A7018' },
+  { name: 'forest',   skyT: '#3A7AB5', skyB: '#8FC8E8', h1: '#2A6828', h2: '#1E5020', gFill: '#2A6018', gLine: '#1A4010' },
+  { name: 'mountain', skyT: '#8898C0', skyB: '#C8D8E8', h1: '#9098A8', h2: '#6A7888', gFill: '#7A8A6A', gLine: '#506048' },
+  { name: 'sunset',   skyT: '#E8521A', skyB: '#FFB060', h1: '#2A1838', h2: '#18101E', gFill: '#1E2A10', gLine: '#304018' },
+];
+
+function getBiome(dist) {
+  const i = Math.floor(dist / BIOME_LEN) % BIOMES.length;
+  const next = (i + 1) % BIOMES.length;
+  const pos = (dist % BIOME_LEN) / BIOME_LEN;
+  const t = pos > 0.82 ? (pos - 0.82) / 0.18 : 0;
+  return { cur: BIOMES[i], nxt: BIOMES[next], t };
+}
+
+function blendHex(a, b, t) { return lerpColor(a, b, t); }
+
+function renderClassic(g) {
+  const W = canvas.width, H = canvas.height;
+  const { cur, nxt, t } = getBiome(g.distance);
+
+  // Sky
+  const skyTop = blendHex(cur.skyT, nxt.skyT, t);
+  const skyBot = blendHex(cur.skyB, nxt.skyB, t);
+  const sky = ctx.createLinearGradient(0, 0, 0, H * 0.75);
+  sky.addColorStop(0, skyTop);
+  sky.addColorStop(1, skyBot);
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, W, H);
+
+  // Biome-specific background elements
+  drawBiomeBg(g, cur, nxt, t);
+
+  // Clouds
+  drawClouds(g);
+
+  // Terrain
+  drawTerrainClassic(g, cur, nxt, t);
+
+  // Obstacles
+  g.obstacles.forEach(ob => {
+    const sx = ob.worldX - g.distPixels + g.horseScreenX;
+    if (sx > -200 && sx < W + 200) drawObstacleClassic(ob, sx, groundYAt(ob.worldX));
+  });
+
+  // Horse (no neon glow in classic mode)
+  if (g.invincible === 0 || Math.floor(g.invincible / 6) % 2 === 0)
+    drawHorseClassic(g.horseScreenX, g.horseY, g.horseW, g.horseH, g.gallopPhase, g.onGround);
+}
+
+function drawBiomeBg(g, cur, nxt, t) {
+  const W = canvas.width, H = canvas.height;
+  const base = H * GROUND_BASE_FRAC;
+  const biome = t < 0.5 ? cur.name : nxt.name;
+
+  // Far hill layer
+  const h1 = blendHex(cur.h1, nxt.h1, t);
+  ctx.fillStyle = h1;
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let sx = 0; sx <= W; sx += 14) {
+    const wx = (sx - g.horseScreenX + g.distPixels) * 0.25;
+    const ty = base - 70 + Math.sin(wx * 0.004) * 55 + Math.sin(wx * 0.009) * 25;
+    sx === 0 ? ctx.moveTo(0, ty) : ctx.lineTo(sx, ty);
   }
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+
+  // Mid hill layer
+  const h2 = blendHex(cur.h2, nxt.h2, t);
+  ctx.fillStyle = h2;
+  ctx.beginPath();
+  for (let sx = 0; sx <= W; sx += 10) {
+    const wx = (sx - g.horseScreenX + g.distPixels) * 0.5;
+    const ty = base - 35 + Math.sin(wx * 0.006) * 32 + Math.sin(wx * 0.014) * 14;
+    sx === 0 ? ctx.moveTo(0, ty) : ctx.lineTo(sx, ty);
+  }
+  ctx.lineTo(W, H); ctx.closePath(); ctx.fill();
+
+  // Biome decorations
+  if (biome === 'meadow') drawMeadowDeco(g, base);
+  else if (biome === 'forest') drawForestDeco(g, base, h1);
+  else if (biome === 'mountain') drawMountainDeco(g, base);
+  else if (biome === 'sunset') drawSunsetDeco(g, base);
+}
+
+function drawMeadowDeco(g, base) {
+  // Sun
+  const W = canvas.width;
+  ctx.fillStyle = '#FFE566';
+  ctx.shadowColor = '#FFD700'; ctx.shadowBlur = 30;
+  ctx.beginPath();
+  ctx.arc(W * 0.85, canvas.height * 0.12, 38, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+  // Flowers as small coloured dots on far hill
+  const FLOWER_COLORS = ['#FF6B9D','#FFD700','#FF8C42','#A8FF5A'];
+  for (let i = 0; i < 18; i++) {
+    const wx = g.distPixels * 0.25 + i * 180 + 40;
+    const sx = ((wx % (W + 200)) + W + 200) % (W + 200) - 100;
+    const ty = base - 62 + Math.sin(wx * 0.004) * 55 + Math.sin(wx * 0.009) * 25 - 6;
+    ctx.fillStyle = FLOWER_COLORS[i % 4];
+    ctx.beginPath(); ctx.arc(sx, ty, 4, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawForestDeco(g, base, hillColor) {
+  const W = canvas.width;
+  ctx.fillStyle = darkenColor(hillColor.startsWith('rgb') ? '#2A6828' : hillColor, 0.15);
+  for (let i = 0; i < 14; i++) {
+    const wx = g.distPixels * 0.25 + i * 130 + 20;
+    const sx = ((wx % (W + 300)) + W + 300) % (W + 300) - 150;
+    const treeH = 55 + (i % 3) * 18;
+    const ty = base - 68 + Math.sin(wx * 0.004) * 55;
+    drawPine(sx, ty, treeH, '#1A4818');
+    drawPine(sx + 22, ty + 8, treeH * 0.8, '#234020');
+  }
+}
+
+function drawPine(x, y, h, color) {
+  ctx.fillStyle = color;
+  // Three layers of triangle
+  [[0.38, 0], [0.46, 0.28], [0.55, 0.52]].forEach(([w, topFrac]) => {
+    ctx.beginPath();
+    ctx.moveTo(x, y - h * (1 - topFrac));
+    ctx.lineTo(x - h * w, y - h * topFrac * 0.05);
+    ctx.lineTo(x + h * w, y - h * topFrac * 0.05);
+    ctx.closePath(); ctx.fill();
+  });
+  // Trunk
+  ctx.fillStyle = '#5D3A1A';
+  ctx.fillRect(x - 4, y, 8, h * 0.2);
+}
+
+function drawMountainDeco(g, base) {
+  const W = canvas.width;
+  // Snow-capped peaks in background
+  const peaks = [
+    [W * 0.1, base - 160, 110],
+    [W * 0.3, base - 200, 140],
+    [W * 0.55, base - 175, 120],
+    [W * 0.75, base - 220, 160],
+    [W * 0.95, base - 150, 100],
+  ];
+  peaks.forEach(([px, py, pw]) => {
+    ctx.fillStyle = '#9098A8';
+    ctx.beginPath();
+    ctx.moveTo(px, py); ctx.lineTo(px - pw / 2, base - 30); ctx.lineTo(px + pw / 2, base - 30);
+    ctx.closePath(); ctx.fill();
+    // Snow cap
+    ctx.fillStyle = '#EEF2F5';
+    ctx.beginPath();
+    ctx.moveTo(px, py); ctx.lineTo(px - pw * 0.18, py + pw * 0.22); ctx.lineTo(px + pw * 0.18, py + pw * 0.22);
+    ctx.closePath(); ctx.fill();
+  });
+}
+
+function drawSunsetDeco(g, base) {
+  const W = canvas.width, H = canvas.height;
+  // Sun on horizon
+  const sunGrad = ctx.createRadialGradient(W * 0.7, base - 40, 5, W * 0.7, base - 40, 80);
+  sunGrad.addColorStop(0, 'rgba(255,220,50,0.9)');
+  sunGrad.addColorStop(0.4, 'rgba(255,120,20,0.5)');
+  sunGrad.addColorStop(1, 'rgba(255,80,0,0)');
+  ctx.fillStyle = sunGrad;
+  ctx.fillRect(0, 0, W, H);
+  // Silhouette trees
+  for (let i = 0; i < 10; i++) {
+    const wx = g.distPixels * 0.25 + i * 160 + 60;
+    const sx = ((wx % (W + 300)) + W + 300) % (W + 300) - 150;
+    drawPine(sx, base - 68 + Math.sin(wx * 0.004) * 55, 60, '#110A18');
+  }
+}
+
+function drawClouds(g) {
+  const W = canvas.width;
+  ctx.fillStyle = 'rgba(255,255,255,0.82)';
+  for (let i = 0; i < 5; i++) {
+    const wx = g.distPixels * 0.15 + i * (W / 4) + 80;
+    const sx = ((wx % (W + 200)) + W + 200) % (W + 200) - 100;
+    const cy = canvas.height * (0.08 + (i % 3) * 0.07);
+    const cw = 70 + (i % 3) * 40;
+    const r = cw / 4;
+    ctx.beginPath();
+    ctx.arc(sx + r,      cy + r,      r,      0, Math.PI * 2);
+    ctx.arc(sx + r * 1.9, cy + r * 0.6, r * 1.2, 0, Math.PI * 2);
+    ctx.arc(sx + r * 3.1, cy + r,      r,      0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function drawTerrainClassic(g, cur, nxt, t) {
+  const W = canvas.width, H = canvas.height;
+  const step = 6;
+  const gFill = blendHex(cur.gFill, nxt.gFill, t);
+  const gLine = blendHex(cur.gLine, nxt.gLine, t);
+
+  ctx.beginPath();
+  ctx.moveTo(0, H);
+  for (let sx = 0; sx <= W; sx += step) {
+    const ty = groundYAt(sx - g.horseScreenX + g.distPixels);
+    sx === 0 ? ctx.moveTo(0, ty) : ctx.lineTo(sx, ty);
+  }
+  ctx.lineTo(W, H); ctx.closePath();
+
+  // Gradient fill terrain
+  const grad = ctx.createLinearGradient(0, H * GROUND_BASE_FRAC - 40, 0, H);
+  grad.addColorStop(0, gFill);
+  grad.addColorStop(0.3, darkenColor(gFill.startsWith('rgb') ? cur.gFill : gFill, 0.15));
+  grad.addColorStop(1, darkenColor(cur.gFill, 0.35));
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Terrain surface line
+  ctx.beginPath();
+  for (let sx = 0; sx <= W; sx += step) {
+    const ty = groundYAt(sx - g.horseScreenX + g.distPixels);
+    sx === 0 ? ctx.moveTo(0, ty) : ctx.lineTo(sx, ty);
+  }
+  ctx.strokeStyle = gLine;
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+}
+
+function drawObstacleClassic(ob, sx, groundY) {
+  const top = groundY - ob.h;
+  const c = ob.color;
+
+  if (ob.type === 'wall') {
+    // Stone wall - warm grey
+    const grad = ctx.createLinearGradient(sx, top, sx + ob.w, top);
+    grad.addColorStop(0, '#A09080'); grad.addColorStop(1, '#8A7868');
+    ctx.fillStyle = grad;
+    ctx.fillRect(sx, top, ob.w, ob.h);
+    ctx.strokeStyle = '#6A5848'; ctx.lineWidth = 1.5;
+    ctx.strokeRect(sx, top, ob.w, ob.h);
+    for (let row = 10; row < ob.h; row += 10) {
+      ctx.beginPath(); ctx.moveTo(sx, top + row); ctx.lineTo(sx + ob.w, top + row); ctx.stroke();
+    }
+    ctx.fillStyle = c; ctx.fillRect(sx - 3, top - 6, ob.w + 6, 6);
+    ctx.strokeStyle = darkenColor(c, 0.3); ctx.lineWidth = 1; ctx.strokeRect(sx - 3, top - 6, ob.w + 6, 6);
+  } else if (ob.type === 'oxer') {
+    const spread = ob.w * 0.9;
+    drawPoleClassic(sx, top, ob.w, ob.h, c);
+    drawPoleClassic(sx + spread, top + ob.h * 0.15, ob.w, ob.h * 0.85, c);
+    ctx.strokeStyle = c; ctx.lineWidth = 4; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(sx, top - 2); ctx.lineTo(sx + spread + ob.w, top + ob.h * 0.13); ctx.stroke();
+  } else {
+    drawPoleClassic(sx, top, ob.w, ob.h, c);
+  }
+}
+
+function drawPoleClassic(x, y, w, h, c) {
+  // Wooden posts
+  const postGrad = ctx.createLinearGradient(x, 0, x + 8, 0);
+  postGrad.addColorStop(0, '#8B5E3C'); postGrad.addColorStop(1, '#6B4628');
+  ctx.fillStyle = postGrad;
+  ctx.strokeStyle = '#4A3020'; ctx.lineWidth = 1;
+  ctx.fillRect(x - 4, y, 8, h); ctx.strokeRect(x - 4, y, 8, h);
+  ctx.fillRect(x + w - 4, y, 8, h); ctx.strokeRect(x + w - 4, y, 8, h);
+
+  // Rails with stripes
+  const rails = 3;
+  for (let i = 0; i < rails; i++) {
+    const ry = y + (h / (rails + 1)) * (i + 1);
+    ctx.fillStyle = i % 2 === 0 ? c : '#FFFFFF';
+    ctx.fillRect(x - 2, ry - 4, w + 4, 8);
+    const alt = i % 2 === 0 ? '#FFFFFF' : c;
+    for (let s = 0; s < Math.ceil(w / 16); s++) {
+      ctx.fillStyle = s % 2 === 0 ? alt : c;
+      ctx.fillRect(x + s * 16, ry - 4, 8, 8);
+    }
+    ctx.strokeStyle = darkenColor(c, 0.25); ctx.lineWidth = 1.5;
+    ctx.strokeRect(x - 2, ry - 4, w + 4, 8);
+  }
+}
+
+// ── Horse (classic – no neon glow) ────────────────────────────────────────
+function drawHorseClassic(x, y, w, h, phase, onGround) {
+  // Same as drawHorseElasto but with shadowBlur = 0 throughout
+  ctx.save();
+  ctx.translate(x + w, y);
+  ctx.scale(-1, 1);
+
+  const coat = config.horseCoat;
+  const gear = config.gearColor;
+  const outline = darkenColor(coat, 0.35);
+  const lw = Math.max(1.5, w * 0.016);
+
+  const bw = w * 0.48, bh = h * 0.38;
+  const bx = w * 0.22, by = h * 0.38;
+  const hx2 = bx - w * 0.04, hy2 = by - bh * 0.7;
+
+  const legAngles = onGround ? [
+    Math.sin(phase * Math.PI / 2) * 0.28,
+    Math.sin((phase + 2) * Math.PI / 2) * 0.28,
+    Math.sin((phase + 1) * Math.PI / 2) * 0.28,
+    Math.sin((phase + 3) * Math.PI / 2) * 0.28,
+  ] : [-0.42, 0.45, -0.3, 0.35];
+
+  const legW = w * 0.065, legH = h * 0.38;
+  const legPos = [
+    [bx + bw * 0.18, by + bh * 0.85], [bx + bw * 0.32, by + bh * 0.85],
+    [bx + bw * 0.62, by + bh * 0.85], [bx + bw * 0.78, by + bh * 0.85],
+  ];
+
+  [2, 3].forEach(i => drawLeg(legPos[i], legAngles[i], legW, legH, coat, outline, lw));
+
+  // Tail
+  ctx.strokeStyle = gear; ctx.lineWidth = lw * 2; ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(bx + bw, by + bh * 0.4);
+  ctx.quadraticCurveTo(bx + bw + w * 0.2, by + bh * 0.95, bx + bw + w * 0.08, by + bh * 1.4);
+  ctx.stroke();
+
+  // Body
+  ctx.fillStyle = coat; ctx.strokeStyle = outline; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.ellipse(bx + bw / 2, by + bh / 2, bw / 2, bh / 2, 0, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+
+  drawMarkingsElasto(bx, by, bw, bh);
+
+  // Neck
+  ctx.fillStyle = coat; ctx.strokeStyle = outline; ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.moveTo(bx + w * 0.05, by + bh * 0.2);
+  ctx.quadraticCurveTo(bx - w * 0.04, by - bh * 0.3, bx, by - bh * 0.55);
+  ctx.quadraticCurveTo(bx + w * 0.12, by - bh * 0.6, bx + w * 0.12, by + bh * 0.1);
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  // Head
+  ctx.fillStyle = coat; ctx.strokeStyle = outline; ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.ellipse(hx2, hy2, w * 0.1, h * 0.1, -0.4, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+
+  // Nose
+  ctx.fillStyle = lerpColor(coat, '#000000', 0.2);
+  ctx.beginPath(); ctx.ellipse(hx2 - w * 0.08, hy2 + h * 0.02, w * 0.055, h * 0.055, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Nostril
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.arc(hx2 - w * 0.112, hy2 + h * 0.03, w * 0.01, 0, Math.PI * 2); ctx.fill();
+
+  // Eye (normal, no glow)
+  ctx.fillStyle = '#2A1A0A';
+  ctx.beginPath(); ctx.arc(hx2 - w * 0.04, hy2 - h * 0.015, w * 0.02, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = '#fff';
+  ctx.beginPath(); ctx.arc(hx2 - w * 0.038, hy2 - h * 0.019, w * 0.007, 0, Math.PI * 2); ctx.fill();
+
+  // Ear
+  ctx.fillStyle = coat; ctx.strokeStyle = outline; ctx.lineWidth = lw * 0.8;
+  ctx.beginPath();
+  ctx.moveTo(hx2 + w * 0.04, hy2 - h * 0.08); ctx.lineTo(hx2 + w * 0.07, hy2 - h * 0.17);
+  ctx.lineTo(hx2 + w * 0.02, hy2 - h * 0.09); ctx.closePath(); ctx.fill(); ctx.stroke();
+
+  // Mane (natural color, no glow)
+  const maneX = bx + w * 0.02, maneY = by - bh * 0.2;
+  ctx.fillStyle = darkenColor(coat, 0.28); ctx.strokeStyle = darkenColor(coat, 0.45); ctx.lineWidth = lw * 0.5;
+  for (let i = 0; i < 5; i++) {
+    ctx.beginPath(); ctx.arc(maneX + i * w * 0.038, maneY - i * h * 0.04, w * 0.03, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
+  }
+
+  if (config.marking === 'star') {
+    ctx.fillStyle = config.markingColor;
+    ctx.beginPath(); ctx.arc(hx2 - w * 0.01, hy2 - h * 0.01, w * 0.03, 0, Math.PI * 2); ctx.fill();
+  }
+
+  [0, 1].forEach(i => drawLeg(legPos[i], legAngles[i], legW, legH, coat, outline, lw));
+
+  // Gear straps (no glow)
+  ctx.strokeStyle = gear; ctx.lineWidth = Math.max(2, w * 0.022); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.arc(bx + bw * 0.28, by + bh * 0.7, bh * 0.35, 0, Math.PI, false); ctx.stroke();
+  ctx.beginPath(); ctx.arc(hx2, hy2, w * 0.07, 0.2, Math.PI * 1.4); ctx.stroke();
+
+  drawRiderClassic(bx + bw * 0.3, by - h * 0.05, w, h);
+  ctx.restore();
+}
+
+function drawRiderClassic(rx, ry, w, h) {
+  const outfit = config.outfitColor;
+  const hair = config.hairColor;
+  const isGirl = config.gender === 'girl';
+  const lw = Math.max(1.5, w * 0.014);
+
+  ctx.fillStyle = outfit; ctx.strokeStyle = darkenColor(outfit, 0.35); ctx.lineWidth = lw;
+  ctx.beginPath(); ctx.ellipse(rx, ry - h * 0.22, w * 0.09, h * 0.14, 0, 0, Math.PI * 2);
+  ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = lerpColor(outfit, '#FFFFFF', 0.5);
+  ctx.fillRect(rx - w * 0.055, ry - h * 0.1, w * 0.05, h * 0.15);
+  ctx.fillRect(rx + w * 0.005, ry - h * 0.1, w * 0.05, h * 0.15);
+
+  ctx.fillStyle = '#3A2010';
+  ctx.fillRect(rx - w * 0.055, ry + h * 0.04, w * 0.05, h * 0.06);
+  ctx.fillRect(rx + w * 0.005, ry + h * 0.04, w * 0.05, h * 0.06);
+
+  ctx.fillStyle = '#FDBCB4'; ctx.strokeStyle = '#C49086'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.arc(rx, ry - h * 0.38, w * 0.065, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  ctx.fillStyle = darkenColor(outfit, 0.25); ctx.strokeStyle = outfit; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(rx, ry - h * 0.41, w * 0.07, Math.PI, 0); ctx.fill(); ctx.stroke();
+  ctx.fillRect(rx - w * 0.07, ry - h * 0.41, w * 0.14, h * 0.03);
+
+  ctx.fillStyle = hair;
+  if (isGirl) {
+    ctx.beginPath(); ctx.arc(rx, ry - h * 0.37, w * 0.055, 0, Math.PI); ctx.fill();
+    ctx.strokeStyle = hair; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(rx + w * 0.05, ry - h * 0.38);
+    ctx.quadraticCurveTo(rx + w * 0.1, ry - h * 0.25, rx + w * 0.06, ry - h * 0.18); ctx.stroke();
+  } else {
+    ctx.beginPath(); ctx.arc(rx, ry - h * 0.37, w * 0.05, 0, Math.PI); ctx.fill();
+  }
+
+  ctx.strokeStyle = outfit; ctx.lineWidth = Math.max(4, w * 0.04); ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(rx - w * 0.06, ry - h * 0.25); ctx.lineTo(rx - w * 0.12, ry - h * 0.12); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(rx + w * 0.06, ry - h * 0.25); ctx.lineTo(rx + w * 0.12, ry - h * 0.12); ctx.stroke();
 }
 
 function drawBackgroundHills(g) {
