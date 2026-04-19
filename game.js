@@ -340,7 +340,7 @@ function update() {
       g.passedObstacles.add(ob);
       g.jumps++;
       playBell();
-      document.getElementById('hud-jumps').textContent = g.jumps;
+      // hud-jumps removed from HUD
     }
   }
 
@@ -348,9 +348,6 @@ function update() {
 
   document.getElementById('hud-distance').textContent = Math.floor(g.distance) + 'м';
   document.getElementById('hud-best').textContent = getBest(config.player) + 'м';
-  const secs = Math.floor((performance.now() - g.startTime) / 1000);
-  document.getElementById('hud-time').textContent =
-    `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
 }
 
 function updateLivesHUD(g) {
