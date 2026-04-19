@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Конкур</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Экран настройки -->
+  <div id="setup-screen" class="screen active">
+    <h1 class="game-title">🐴 Конкур</h1>
+
+    <div class="setup-container">
+
+      <!-- Настройка лошади -->
+      <section class="setup-section">
+        <h2>Лошадь</h2>
+
+        <label>Порода</label>
+        <div class="option-grid" id="breed-options">
+          <button class="opt-btn active" data-breed="arabian">Арабская</button>
+          <button class="opt-btn" data-breed="frisian">Фризская</button>
+          <button class="opt-btn" data-breed="pinto">Пинто</button>
+          <button class="opt-btn" data-breed="appaloosa">Аппалуза</button>
+          <button class="opt-btn" data-breed="palomino">Паломино</button>
+          <button class="opt-btn" data-breed="grey">Серая</button>
+        </div>
+
+        <label>Цвет шерсти</label>
+        <div class="color-row" id="horse-coat-colors">
+          <button class="color-btn active" data-color="#C8834A" style="background:#C8834A"></button>
+          <button class="color-btn" data-color="#3D2B1F" style="background:#3D2B1F"></button>
+          <button class="color-btn" data-color="#F5E6C8" style="background:#F5E6C8"></button>
+          <button class="color-btn" data-color="#888888" style="background:#888888"></button>
+          <button class="color-btn" data-color="#1A1A1A" style="background:#1A1A1A"></button>
+          <button class="color-btn" data-color="#FFFFFF" style="background:#FFFFFF; border:2px solid #ccc"></button>
+          <button class="color-btn" data-color="#D4A017" style="background:#D4A017"></button>
+        </div>
+
+        <label>Пятна / Окраска</label>
+        <div class="option-grid" id="marking-options">
+          <button class="opt-btn active" data-marking="none">Нет</button>
+          <button class="opt-btn" data-marking="pinto">Пятна</button>
+          <button class="opt-btn" data-marking="appaloosa">Крапинки</button>
+          <button class="opt-btn" data-marking="star">Звезда</button>
+          <button class="opt-btn" data-marking="stripe">Полоса</button>
+          <button class="opt-btn" data-marking="socks">Носочки</button>
+        </div>
+
+        <label>Цвет пятен</label>
+        <div class="color-row" id="marking-colors">
+          <button class="color-btn active" data-color="#FFFFFF" style="background:#FFFFFF; border:2px solid #ccc"></button>
+          <button class="color-btn" data-color="#1A1A1A" style="background:#1A1A1A"></button>
+          <button class="color-btn" data-color="#C8834A" style="background:#C8834A"></button>
+          <button class="color-btn" data-color="#888888" style="background:#888888"></button>
+          <button class="color-btn" data-color="#D4A017" style="background:#D4A017"></button>
+        </div>
+
+        <label>Снаряжение (цвет)</label>
+        <div class="color-row" id="gear-colors">
+          <button class="color-btn active" data-color="#E63946" style="background:#E63946"></button>
+          <button class="color-btn" data-color="#2A9D8F" style="background:#2A9D8F"></button>
+          <button class="color-btn" data-color="#264653" style="background:#264653"></button>
+          <button class="color-btn" data-color="#F4A261" style="background:#F4A261"></button>
+          <button class="color-btn" data-color="#8338EC" style="background:#8338EC"></button>
+          <button class="color-btn" data-color="#FFD700" style="background:#FFD700"></button>
+        </div>
+      </section>
+
+      <!-- Настройка наездника -->
+      <section class="setup-section">
+        <h2>Наездник</h2>
+
+        <label>Пол</label>
+        <div class="option-grid" id="rider-gender">
+          <button class="opt-btn active" data-gender="girl">Девочка</button>
+          <button class="opt-btn" data-gender="boy">Мальчик</button>
+        </div>
+
+        <label>Цвет волос</label>
+        <div class="color-row" id="hair-colors">
+          <button class="color-btn active" data-color="#8B4513" style="background:#8B4513"></button>
+          <button class="color-btn" data-color="#1A1A1A" style="background:#1A1A1A"></button>
+          <button class="color-btn" data-color="#FFD700" style="background:#FFD700"></button>
+          <button class="color-btn" data-color="#FF6347" style="background:#FF6347"></button>
+          <button class="color-btn" data-color="#FFFFFF" style="background:#FFFFFF; border:2px solid #ccc"></button>
+          <button class="color-btn" data-color="#9400D3" style="background:#9400D3"></button>
+        </div>
+
+        <label>Форма наездника (цвет)</label>
+        <div class="color-row" id="outfit-colors">
+          <button class="color-btn active" data-color="#FFFFFF" style="background:#FFFFFF; border:2px solid #ccc"></button>
+          <button class="color-btn" data-color="#1A1A1A" style="background:#1A1A1A"></button>
+          <button class="color-btn" data-color="#E63946" style="background:#E63946"></button>
+          <button class="color-btn" data-color="#2A9D8F" style="background:#2A9D8F"></button>
+          <button class="color-btn" data-color="#264653" style="background:#264653"></button>
+          <button class="color-btn" data-color="#8338EC" style="background:#8338EC"></button>
+        </div>
+      </section>
+
+    </div>
+
+    <button id="start-btn" class="primary-btn">Начать игру!</button>
+  </div>
+
+  <!-- Игровой экран -->
+  <div id="game-screen" class="screen">
+    <div id="hud">
+      <div class="hud-item">
+        <span class="hud-label">Метры</span>
+        <span id="hud-distance">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Прыжки</span>
+        <span id="hud-jumps">0</span>
+      </div>
+      <div class="hud-item">
+        <span class="hud-label">Время</span>
+        <span id="hud-time">0:00</span>
+      </div>
+    </div>
+    <canvas id="game-canvas"></canvas>
+    <div id="tap-hint">Нажми для прыжка!</div>
+  </div>
+
+  <!-- Экран конца игры -->
+  <div id="gameover-screen" class="screen">
+    <div class="gameover-card">
+      <h2>Лошадь задела препятствие!</h2>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <span class="stat-label">Метры</span>
+          <span class="stat-value" id="final-distance">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Прыжки</span>
+          <span class="stat-value" id="final-jumps">0</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Время</span>
+          <span class="stat-value" id="final-time">0:00</span>
+        </div>
+      </div>
+      <button id="restart-btn" class="primary-btn">Ещё раз!</button>
+      <button id="menu-btn" class="secondary-btn">Настройки</button>
+    </div>
+  </div>
+
+  <script src="game.js"></script>
+</body>
+</html>
