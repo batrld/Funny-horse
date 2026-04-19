@@ -107,6 +107,8 @@ const GRAVITY = 0.52;
 const JUMP_VEL = -14;
 const SPEED_BASE = 4;
 const SPEED_INC = 0.0008;
+const SPEED_MIN = 1.5;
+const SPEED_MAX = 14;
 const GROUND_BASE_FRAC = 0.68;
 const HORSE_SCREEN_X_FRAC = 0.22;
 
@@ -159,6 +161,14 @@ window.addEventListener('keydown', e => {
     e.preventDefault();
     doJump();
   }
+  if (e.code === 'ArrowRight') {
+    e.preventDefault();
+    if (game && !game.over) game.speed = Math.min(SPEED_MAX, game.speed + 1.5);
+  }
+  if (e.code === 'ArrowLeft') {
+    e.preventDefault();
+    if (game && !game.over) game.speed = Math.max(SPEED_MIN, game.speed - 1.5);
+  }
 });
 
 function doJump() {
@@ -206,7 +216,7 @@ const NEON_COLORS = ['#FF3366', '#00FFFF', '#FF6600', '#9D00FF', '#FFD700', '#00
 
 function makeObstacle(worldX) {
   const type = ['vertical', 'oxer', 'wall'][Math.floor(Math.random() * 3)];
-  const h = canvas.height * (0.12 + Math.random() * 0.1);
+  const h = canvas.height * (0.07 + Math.random() * 0.05);
   const w = type === 'oxer' ? canvas.height * 0.12 : canvas.height * 0.06;
   return { worldX, w, h, type, color: NEON_COLORS[Math.floor(Math.random() * NEON_COLORS.length)] };
 }
@@ -222,7 +232,7 @@ function loop() {
 function update() {
   const g = game;
   g.frameCount++;
-  g.speed = SPEED_BASE + g.distance * SPEED_INC;
+  // Speed is controlled manually via ArrowLeft/Right; clamp only
   g.distPixels += g.speed;
   g.distance = g.distPixels / 60;
 
