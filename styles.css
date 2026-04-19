@@ -243,6 +243,20 @@ html, body {
   line-height: 1.1;
 }
 
+.hud-legs {
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  line-height: 1.2;
+}
+
+.hud-lives {
+  font-size: 1.2rem;
+  color: #FF3366;
+  text-shadow: 0 0 8px #FF3366;
+  letter-spacing: 0.1em;
+  line-height: 1.2;
+}
+
 #game-canvas {
   flex: 1;
   display: block;

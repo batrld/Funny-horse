@@ -206,7 +206,11 @@ function initGame() {
     stars: initStars(),
     passedObstacles: new Set(),
     rafId: null,
+    lives: 3,
+    legs: 5,
+    invincible: 0,
   };
+  updateLivesHUD(game);
 
   game.rafId = requestAnimationFrame(loop);
 }
@@ -250,6 +254,7 @@ function update() {
     g.horseY = groundY - g.horseH;
   }
 
+  if (g.invincible > 0) g.invincible--;
   g.gallopTimer += g.speed;
   if (g.gallopTimer > 35) {
     g.gallopTimer = 0;
@@ -273,9 +278,17 @@ function update() {
     const obTop = obGY - ob.h;
 
     if (hl < sx + ob.w && hr > sx && ht < obGY && hb > obTop) {
+      if (g.invincible > 0) continue;
       playHit();
-      endGame();
-      return;
+      g.legs--;
+      if (g.legs <= 0) {
+        g.lives--;
+        if (g.lives <= 0) { endGame(); return; }
+        g.legs = 5;
+      }
+      g.invincible = 90;
+      updateLivesHUD(g);
+      continue;
     }
     if (!g.passedObstacles.has(ob) && sx + ob.w < g.horseScreenX) {
       g.passedObstacles.add(ob);
@@ -291,6 +304,13 @@ function update() {
   const secs = Math.floor((performance.now() - g.startTime) / 1000);
   document.getElementById('hud-time').textContent =
     `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
+}
+
+function updateLivesHUD(g) {
+  const LEG = '🦵';
+  const HEART = '♥';
+  document.getElementById('hud-legs').textContent = LEG.repeat(g.legs);
+  document.getElementById('hud-lives').textContent = HEART.repeat(g.lives);
 }
 
 function endGame() {
@@ -333,7 +353,10 @@ function render() {
     }
   });
 
-  drawHorseElasto(g.horseScreenX, g.horseY, g.horseW, g.horseH, g.gallopPhase, g.onGround);
+  // Blink horse during invincibility (every 6 frames)
+  if (g.invincible === 0 || Math.floor(g.invincible / 6) % 2 === 0) {
+    drawHorseElasto(g.horseScreenX, g.horseY, g.horseW, g.horseH, g.gallopPhase, g.onGround);
+  }
 }
 
 function drawBackgroundHills(g) {
